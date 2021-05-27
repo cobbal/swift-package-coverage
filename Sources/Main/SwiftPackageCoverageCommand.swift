@@ -29,12 +29,20 @@ struct SwiftPackageCoverageCommand: ParsableCommand {
     var options: Options
 
     mutating func run() {
-        runCleanUp(options.cleanBefore)
+        if options.cleanBefore {
+            runCleanUp()
+        }
+
         runSwiftTestWithCoverage()
+
         let coverageFilePath = findCoverageFilePath()
         let coverage = processCoverageFile(atPath: coverageFilePath)
+
         output(coverage: coverage)
-        runCleanUp(options.cleanAfter)
+
+        if options.cleanAfter {
+            runCleanUp()
+        }
     }
 
     /// Runs `swift test` and generates the coverage file.
@@ -206,10 +214,8 @@ struct SwiftPackageCoverageCommand: ParsableCommand {
         }
     }
 
-    func runCleanUp(_ shouldCleanUp: Bool) {
-        guard shouldCleanUp else {
-            return
-        }
+    /// Deletes .build at the target path
+    func runCleanUp() {
         do {
             try shellOut(
                 to: "rm",
