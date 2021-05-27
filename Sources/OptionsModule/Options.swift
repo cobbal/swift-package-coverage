@@ -30,6 +30,15 @@ public struct Options: ParsableArguments {
         """
     )
     public var runPath: String = "."
+    
+    #if DEBUG
+    @Flag(
+        help: .hidden
+    )
+    public var skipRun: Bool = false
+    #else
+    public let skipRun: Bool = false
+    #endif
 
     //TODO
     @Flag(
@@ -68,7 +77,7 @@ public struct Options: ParsableArguments {
         """
     )
     public var cxxBuildFlags: [String] = []
-    
+
     @Option(
         parsing: .upToNextOption,
         help: """
@@ -78,7 +87,7 @@ public struct Options: ParsableArguments {
         """
     )
     public var linkerFlags: [String] = []
-    
+
     @Option(
         parsing: .upToNextOption,
         help: """
@@ -123,6 +132,9 @@ public struct Options: ParsableArguments {
         """
     )
     public var llvmCovJSONOutputPath: String?
+
+    @Flag(help: "The llvm-cov JSON total section to report on.")
+    public var llvmTotalType: LLVMTotalType = .lines
 
     public init() {}
 }
