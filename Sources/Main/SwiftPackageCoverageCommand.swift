@@ -93,6 +93,8 @@ struct SwiftPackageCoverageCommand: ParsableCommand {
             Self.exit(withError: ExitError(description: "Unable to open coverage JSON file: \(path)."))
         }
 
+        // See Documentation/llvm-cov-2.0.1.md for details on this spec.
+
         return coverage
     }
 
