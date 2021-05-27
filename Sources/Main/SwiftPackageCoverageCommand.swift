@@ -99,16 +99,25 @@ struct SwiftPackageCoverageCommand: ParsableCommand {
         processedCoverage[.version] = coverage[.version]
         processedCoverage[.data] = []
 
+        func shouldInclude(fileName: String) -> Bool {
+            options.includedPaths.contains(where:) { includedPath in
+                fileName.contains(includedPath)
+            }
+        }
+
         var exportData = JSON(parseJSON: "{}")
         exportData[.files] = .init(coverage[.data].array?[0][.files].arrayValue.filter { file in
             guard let fileName = file[.filename].string else {
                 Self.exit(withError: ExitError(description: "Unexpected JSON format. Unable to parse:\n\(file)"))
             }
-            return options.includedPaths.contains(where:) { includedPath in
-                fileName.contains(includedPath)
-            }
+            return shouldInclude(fileName: fileName)
         } ?? [])
-        exportData[.functions] = []
+        exportData[.functions] = .init(coverage[.data].array?[0][.functions].arrayValue.filter { function in
+            guard let fileName = function[.filename].array?[0].string else {
+                Self.exit(withError: ExitError(description: "Unexpected JSON format. Unable to parse:\n\(function)"))
+            }
+            return shouldInclude(fileName: fileName)
+        } ?? [])
         exportData[.totals] = JSON(parseJSON: "{}")
 
         processedCoverage[.data].arrayObject?.append(exportData)
