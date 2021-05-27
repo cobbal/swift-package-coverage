@@ -133,7 +133,8 @@ struct SwiftPackageCoverageCommand: ParsableCommand {
 
         if let llvmCovJSONOutputPath = options.llvmCovJSONOutputPath {
             do {
-                let data = try coverage.rawData()
+                var data = try coverage.rawData(options: [.prettyPrinted, .sortedKeys])
+                data.append("\n".data(using: .utf8)!)
                 try data.write(to: URL(fileURLWithPath: llvmCovJSONOutputPath))
             } catch {
                 Self.exit(withError: ExitError(description: "Unable to write llvm-cov JSON file to: \(llvmCovJSONOutputPath)."))

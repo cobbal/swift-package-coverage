@@ -30,14 +30,14 @@ public struct Options: ParsableArguments {
         """
     )
     public var runPath: String = "."
-    
+
     #if DEBUG
     @Flag(
         help: .hidden
     )
-    public var skipRun: Bool = false
+    public var skipRun = false
     #else
-    public let skipRun: Bool = false
+    public let skipRun = false
     #endif
 
     //TODO

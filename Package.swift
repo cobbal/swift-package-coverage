@@ -3,6 +3,9 @@ import PackageDescription
 
 let package = Package(
     name: "swift-package-coverage",
+    platforms: [
+        .macOS(.v10_13),
+    ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser", .upToNextMinor(from: "0.4.0")),
         .package(url: "https://github.com/JohnSundell/ShellOut.git", from: "2.0.0"),
