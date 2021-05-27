@@ -29,10 +29,12 @@ struct SwiftPackageCoverageCommand: ParsableCommand {
     var options: Options
 
     mutating func run() {
+        runCleanUp(options.cleanBefore)
         runSwiftTestWithCoverage()
         let coverageFilePath = findCoverageFilePath()
         let coverage = processCoverageFile(atPath: coverageFilePath)
         output(coverage: coverage)
+        runCleanUp(options.cleanAfter)
     }
 
     /// Runs `swift test` and generates the coverage file.
@@ -199,6 +201,20 @@ struct SwiftPackageCoverageCommand: ParsableCommand {
             } catch {
                 Self.exit(withError: ExitError(description: "Unable to write llvm-cov JSON file to: \(llvmCovJSONOutputPath)."))
             }
+        }
+    }
+
+    func runCleanUp(_ shouldCleanUp: Bool) {
+        guard shouldCleanUp else {
+            return
+        }
+        do {
+            try shellOut(
+                to: "rm",
+                arguments: ["-rf", ".build"],
+                at: options.runPath)
+        } catch {
+            Self.exit(withError: ExitError(description: "Unable to clean up after processing coverage. \(error)"))
         }
     }
 }

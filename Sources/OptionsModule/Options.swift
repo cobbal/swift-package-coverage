@@ -39,13 +39,19 @@ public struct Options: ParsableArguments {
     public let skipRun = false
     #endif
 
-    //TODO
+    @Flag(
+        help: """
+        When set this will cause the `.build` directory to be deleted before gathering code coverage.
+        """
+    )
+    public var cleanBefore = false
+
     @Flag(
         help: """
         When set this will cause the `.build` directory to be deleted after gathering code coverage.
         """
     )
-    var cleanAfterRun = false
+    public var cleanAfter = false
 
     @Option(
         parsing: .upToNextOption,
@@ -122,14 +128,17 @@ public struct Options: ParsableArguments {
     public var dryRun = false
 
     @Option(
-        name: [.customLong("llvm-cov-json-path")],
+        name: [.customLong("llvm-cov-json-output")],
         help: """
         An output path to write an llvm-cov JSON export file to that matches the output of this tool.
         """
     )
     public var llvmCovJSONOutputPath: String?
 
-    @Flag(help: "The llvm-cov JSON total section to report on.")
+    @Flag(help: """
+    The llvm-cov JSON total section to report on. \
+    The default matches the percentages shown in Xcode.
+    """)
     public var llvmTotalType: LLVMTotalType = .lines
 
     public init() {}
