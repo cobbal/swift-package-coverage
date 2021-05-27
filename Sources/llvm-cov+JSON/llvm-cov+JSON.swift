@@ -36,13 +36,10 @@ public enum LLVMCovPath: String {
 
 extension JSON {
     public subscript(llvmCovPath: LLVMCovPath) -> JSON {
-        get {
-            self[llvmCovPath.rawValue]
-        }
-        set {
-            self[llvmCovPath.rawValue] = newValue
-        }
+        get { self[llvmCovPath.rawValue] }
+        set { self[llvmCovPath.rawValue] = newValue }
         _modify {
+            defer { _fixLifetime(self) }
             yield &self[llvmCovPath.rawValue]
         }
     }
