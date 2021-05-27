@@ -114,11 +114,13 @@ struct SwiftPackageCoverageCommand: ParsableCommand {
         } ?? [])
 
         let functionsData = JSON(coverage[.data].array?[0][.functions].arrayValue.filter { function in
-            // FIXME: Support multiple filenames since multiple can have the same function according to the spec...
-            guard let fileName = function[.filenames].array?[0].string else {
+            guard let fileNames = function[.filenames].array?.compactMap(\.string) else {
                 Self.exit(withError: ExitError(description: "Unexpected JSON format. Unable to parse function data:\n\(function)"))
             }
-            return shouldInclude(fileName: fileName)
+            for fileName in fileNames where shouldInclude(fileName: fileName) {
+                return true
+            }
+            return false
         } ?? [])
 
         let totalSections = [LLVMCovPath.branches, .functions, .instantiations, .lines, .regions]
