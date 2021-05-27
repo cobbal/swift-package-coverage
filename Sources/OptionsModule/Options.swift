@@ -23,6 +23,20 @@ public struct Options: ParsableArguments {
     ]
 
     @Option(
+        help: """
+        Set the path to change directories to before running commands.
+        """
+    )
+    var runPath: String = "."
+
+    @Flag(
+        help: """
+        When set this will cause the `.build` directory to be deleted after gathering code coverage.
+        """
+    )
+    var cleanAfterRun = false
+
+    @Option(
         parsing: .upToNextOption,
         help: """
         Flags to pass to the swift compiler. \
