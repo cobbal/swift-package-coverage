@@ -18,11 +18,13 @@ public struct Options: ParsableArguments {
         If the coverage report contains one of these values in the file path then it will be included in the report.
         """
     )
-    public var includedPaths: [String] = [
+    var _includedPaths: [String] = [
         "Sources/",
         "Source/",
         "Src/",
     ]
+
+    public var includedPaths: Set<String> = .init()
 
     @Option(
         help: """
@@ -97,7 +99,6 @@ public struct Options: ParsableArguments {
     )
     public var otherFlags: [String] = []
 
-    //TODO
     @Flag(
         inversion: .prefixedNo,
         help: """
@@ -106,7 +107,6 @@ public struct Options: ParsableArguments {
     )
     public var showLineCounts = true
 
-    //TODO
     @Flag(
         inversion: .prefixedNo,
         help: """
@@ -124,7 +124,6 @@ public struct Options: ParsableArguments {
     )
     public var dryRun = false
 
-    //TODO
     @Option(
         name: [.customLong("llvm-cov-json-path")],
         help: """
@@ -137,6 +136,10 @@ public struct Options: ParsableArguments {
     public var llvmTotalType: LLVMTotalType = .lines
 
     public init() {}
+
+    public mutating func validate() throws {
+        self.includedPaths = Set(_includedPaths)
+    }
 }
 
 extension Sequence {

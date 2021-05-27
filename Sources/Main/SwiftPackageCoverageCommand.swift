@@ -97,12 +97,24 @@ struct SwiftPackageCoverageCommand: ParsableCommand {
         var processedCoverage = JSON(parseJSON: "{}")
         processedCoverage[.type] = coverage[.type]
         processedCoverage[.version] = coverage[.version]
+        processedCoverage[.data] = []
+
+        var exportData = JSON(parseJSON: "{}")
+        exportData[.files] = .init(coverage[.data].array?[0][.files].arrayValue.filter { file in
+            return file[.filename].string
+        } ?? [])
+        exportData[.functions] = []
+        exportData[.totals] = JSON(parseJSON: "{}")
+
+        processedCoverage[.data].arrayObject?.append(exportData)
 
         return processedCoverage
     }
 
     /// Write the coverage data to the appropriate places according to options.
     func output(coverage: JSON) {
+        print(coverage)
+        return
         let totals = coverage[.data].arrayValue[0][.totals]
         let section: JSON
 
