@@ -94,10 +94,9 @@ struct SwiftPackageCoverageCommand: ParsableCommand {
         }
 
         // See Documentation/llvm-cov-2.0.1.md for details on this spec.
-        var processedCoverage = JSON(parseJSON: "{}")
+        var processedCoverage: JSON = [:]
         processedCoverage[.type] = coverage[.type]
         processedCoverage[.version] = coverage[.version]
-        processedCoverage[.data] = []
 
         func shouldInclude(fileName: String) -> Bool {
             options.includedPaths.contains(where:) { includedPath in
@@ -112,37 +111,69 @@ struct SwiftPackageCoverageCommand: ParsableCommand {
             return shouldInclude(fileName: fileName)
         } ?? [])
 
+        print("Files:\n", filesData)
+
         let functionsData = JSON(coverage[.data].array?[0][.functions].arrayValue.filter { function in
+            // FIXME: Support multiple filenames since multiple can have the same function according to the spec...
             guard let fileName = function[.filenames].array?[0].string else {
                 Self.exit(withError: ExitError(description: "Unexpected JSON format. Unable to parse function data:\n\(function)"))
             }
             return shouldInclude(fileName: fileName)
         } ?? [])
 
-        var totalsData = JSON(parseJSON: "{}")
-        for totalPath in [LLVMCovPath.branches, .functions, .instantiations, .lines, .regions] {
-            totalsData[totalPath] = JSON(parseJSON: "{}")
-            totalsData[totalPath][.count] = 0
-            totalsData[totalPath][.covered] = 0
-            totalsData[totalPath][.percent] = 0.0
+        print("Functions:\n", functionsData)
 
-            if totalPath == .branches || totalPath == .regions {
-                totalsData[totalPath][.notcovered] = 0
+        let totalSections = [LLVMCovPath.branches, .functions, .instantiations, .lines, .regions]
+
+        var totalsData: JSON = [:]
+        for section in totalSections {
+            totalsData[section] = [:]
+            totalsData[section][.count] = 0
+            totalsData[section][.covered] = 0
+
+            if section == .branches || section == .regions {
+                totalsData[section][.notcovered] = 0
             }
         }
 
-        var exportData = JSON(parseJSON: "{}")
+        for file in filesData.arrayValue {
+            for section in totalSections {
+                let summary = file[.summary][section]
+                totalsData[section][.count].intValue += summary[.count].intValue
+                totalsData[section][.covered].intValue += summary[.covered].intValue
+
+                if section == .branches || section == .regions {
+                    totalsData[section][.notcovered].intValue += summary[.notcovered].intValue
+                }
+            }
+        }
+
+        print("totals:\n", totalsData)
+
+        for section in totalSections {
+            var percentage = 100.0 * totalsData[section][.covered].doubleValue / totalsData[section][.count].doubleValue
+            if percentage.isInfinite || percentage.isNaN {
+                percentage = 0.0
+            }
+            print(totalsData[section])
+            totalsData[section][.percent].doubleValue = percentage
+            print(totalsData[section])
+        }
+
+        print("totals:\n", totalsData)
+
+        var exportData: JSON = [:]
         exportData[.files] = filesData
         exportData[.functions] = functionsData
         exportData[.totals] = totalsData
-        processedCoverage[.data].arrayObject?.append(exportData)
+        processedCoverage[.data] = [exportData]
         return processedCoverage
     }
 
     /// Write the coverage data to the appropriate places according to options.
     func output(coverage: JSON) {
-        print(coverage)
-        return
+////        print(coverage)
+//        return
         let totals = coverage[.data].arrayValue[0][.totals]
         let section: JSON
 
