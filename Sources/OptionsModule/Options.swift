@@ -9,6 +9,7 @@
 import ArgumentParser
 
 public struct Options: ParsableArguments {
+    //TODO
     @Option(
         name: [.customLong("coverage-paths")],
         parsing: .upToNextOption,
@@ -30,6 +31,7 @@ public struct Options: ParsableArguments {
     )
     public var runPath: String = "."
 
+    //TODO
     @Flag(
         help: """
         When set this will cause the `.build` directory to be deleted after gathering code coverage.
@@ -76,7 +78,17 @@ public struct Options: ParsableArguments {
         """
     )
     public var linkerFlags: [String] = []
+    
+    @Option(
+        parsing: .upToNextOption,
+        help: """
+        Flags to pass to swift test. \
+        These flags will be passed first after the base swift test command without any modification.
+        """
+    )
+    public var otherFlags: [String] = []
 
+    //TODO
     @Flag(
         inversion: .prefixedNo,
         help: """
@@ -85,6 +97,7 @@ public struct Options: ParsableArguments {
     )
     public var showLineCounts = true
 
+    //TODO
     @Flag(
         inversion: .prefixedNo,
         help: """
@@ -102,7 +115,7 @@ public struct Options: ParsableArguments {
     )
     public var dryRun = false
 
-    
+    //TODO
     @Option(
         name: [.customLong("llvm-cov-json-path")],
         help: """
@@ -112,4 +125,46 @@ public struct Options: ParsableArguments {
     public var llvmCovJSONOutputPath: String?
 
     public init() {}
+}
+
+extension Sequence {
+    func beforeEachValue(insert insertedValue: Element) -> AnyIterator<Element> {
+        var shouldInsert = true
+        var sequenceIterator = makeIterator()
+        var _nextValue = sequenceIterator.next()
+
+        return AnyIterator<Element> {
+            guard let nextValue = _nextValue else {
+                return nil
+            }
+            defer { shouldInsert.toggle() }
+            if shouldInsert {
+                return insertedValue
+            } else {
+                _nextValue = sequenceIterator.next()
+                return nextValue
+            }
+        }
+    }
+}
+
+extension Options {
+    public var arguments: [String] {
+        var arguments: [String] = []
+        arguments.reserveCapacity(otherFlags.count + 2 * (swiftBuildFlags.count + cBuildFlags.count + cxxBuildFlags.count + linkerFlags.count))
+        arguments.append(contentsOf: otherFlags)
+        arguments.append(
+            contentsOf: swiftBuildFlags.beforeEachValue(insert: "-Xswiftc")
+        )
+        arguments.append(
+            contentsOf: cBuildFlags.beforeEachValue(insert: "-Xcc")
+        )
+        arguments.append(
+            contentsOf: cxxBuildFlags.beforeEachValue(insert: "-Xcxx")
+        )
+        arguments.append(
+            contentsOf: linkerFlags.beforeEachValue(insert: "-Xlinker")
+        )
+        return arguments
+    }
 }
