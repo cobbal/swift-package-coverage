@@ -105,23 +105,37 @@ struct SwiftPackageCoverageCommand: ParsableCommand {
             }
         }
 
-        var exportData = JSON(parseJSON: "{}")
-        exportData[.files] = .init(coverage[.data].array?[0][.files].arrayValue.filter { file in
+        let filesData = JSON(coverage[.data].array?[0][.files].arrayValue.filter { file in
             guard let fileName = file[.filename].string else {
-                Self.exit(withError: ExitError(description: "Unexpected JSON format. Unable to parse:\n\(file)"))
+                Self.exit(withError: ExitError(description: "Unexpected JSON format. Unable to parse file data:\n\(file)"))
             }
             return shouldInclude(fileName: fileName)
         } ?? [])
-        exportData[.functions] = .init(coverage[.data].array?[0][.functions].arrayValue.filter { function in
-            guard let fileName = function[.filename].array?[0].string else {
-                Self.exit(withError: ExitError(description: "Unexpected JSON format. Unable to parse:\n\(function)"))
-            }
-            return shouldInclude(fileName: fileName)
-        } ?? [])
-        exportData[.totals] = JSON(parseJSON: "{}")
 
+        let functionsData = JSON(coverage[.data].array?[0][.functions].arrayValue.filter { function in
+            guard let fileName = function[.filenames].array?[0].string else {
+                Self.exit(withError: ExitError(description: "Unexpected JSON format. Unable to parse function data:\n\(function)"))
+            }
+            return shouldInclude(fileName: fileName)
+        } ?? [])
+
+        var totalsData = JSON(parseJSON: "{}")
+        for totalPath in [LLVMCovPath.branches, .functions, .instantiations, .lines, .regions] {
+            totalsData[totalPath] = JSON(parseJSON: "{}")
+            totalsData[totalPath][.count] = 0
+            totalsData[totalPath][.covered] = 0
+            totalsData[totalPath][.percent] = 0.0
+
+            if totalPath == .branches || totalPath == .regions {
+                totalsData[totalPath][.notcovered] = 0
+            }
+        }
+
+        var exportData = JSON(parseJSON: "{}")
+        exportData[.files] = filesData
+        exportData[.functions] = functionsData
+        exportData[.totals] = totalsData
         processedCoverage[.data].arrayObject?.append(exportData)
-
         return processedCoverage
     }
 

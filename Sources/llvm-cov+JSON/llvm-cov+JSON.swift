@@ -17,6 +17,7 @@ public enum LLVMCovPath: String {
     case branches
     case expansions
     case filename
+    case filenames
     case summary
     case count
     case covered
