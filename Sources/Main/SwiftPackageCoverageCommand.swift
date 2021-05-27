@@ -16,7 +16,7 @@ extension Sequence {
         var sequenceIterator = makeIterator()
         var _nextValue = sequenceIterator.next()
 
-        AnyIterator<Element> {
+        return AnyIterator<Element> {
             guard let nextValue = _nextValue else {
                 return nil
             }
