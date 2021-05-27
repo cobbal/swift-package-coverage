@@ -4,7 +4,7 @@ import PackageDescription
 let package = Package(
     name: "swift-package-coverage",
     platforms: [
-        .macOS(.v10_13),
+        .macOS(.v10_15),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser", .upToNextMinor(from: "0.4.0")),

@@ -101,7 +101,12 @@ struct SwiftPackageCoverageCommand: ParsableCommand {
 
         var exportData = JSON(parseJSON: "{}")
         exportData[.files] = .init(coverage[.data].array?[0][.files].arrayValue.filter { file in
-            return file[.filename].string
+            guard let fileName = file[.filename].string else {
+                Self.exit(withError: ExitError(description: "Unexpected JSON format. Unable to parse:\n\(file)"))
+            }
+            return options.includedPaths.contains(where:) { includedPath in
+                fileName.contains(includedPath)
+            }
         } ?? [])
         exportData[.functions] = []
         exportData[.totals] = JSON(parseJSON: "{}")
@@ -150,7 +155,7 @@ struct SwiftPackageCoverageCommand: ParsableCommand {
 
         if let llvmCovJSONOutputPath = options.llvmCovJSONOutputPath {
             do {
-                var data = try coverage.rawData(options: [.prettyPrinted, .sortedKeys])
+                var data = try coverage.rawData(options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
                 data.append("\n".data(using: .utf8)!)
                 try data.write(to: URL(fileURLWithPath: llvmCovJSONOutputPath))
             } catch {

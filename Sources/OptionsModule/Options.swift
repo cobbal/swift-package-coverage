@@ -9,7 +9,6 @@
 import ArgumentParser
 
 public struct Options: ParsableArguments {
-    //TODO
     @Option(
         name: [.customLong("coverage-paths")],
         parsing: .upToNextOption,
@@ -18,13 +17,11 @@ public struct Options: ParsableArguments {
         If the coverage report contains one of these values in the file path then it will be included in the report.
         """
     )
-    var _includedPaths: [String] = [
+    public var includedPaths: [String] = [
         "Sources/",
         "Source/",
         "Src/",
     ]
-
-    public var includedPaths: Set<String> = .init()
 
     @Option(
         help: """
@@ -136,10 +133,6 @@ public struct Options: ParsableArguments {
     public var llvmTotalType: LLVMTotalType = .lines
 
     public init() {}
-
-    public mutating func validate() throws {
-        self.includedPaths = Set(_includedPaths)
-    }
 }
 
 extension Sequence {
