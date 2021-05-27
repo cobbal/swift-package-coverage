@@ -111,8 +111,6 @@ struct SwiftPackageCoverageCommand: ParsableCommand {
             return shouldInclude(fileName: fileName)
         } ?? [])
 
-        print("Files:\n", filesData)
-
         let functionsData = JSON(coverage[.data].array?[0][.functions].arrayValue.filter { function in
             // FIXME: Support multiple filenames since multiple can have the same function according to the spec...
             guard let fileName = function[.filenames].array?[0].string else {
@@ -120,8 +118,6 @@ struct SwiftPackageCoverageCommand: ParsableCommand {
             }
             return shouldInclude(fileName: fileName)
         } ?? [])
-
-        print("Functions:\n", functionsData)
 
         let totalSections = [LLVMCovPath.branches, .functions, .instantiations, .lines, .regions]
 
@@ -148,19 +144,13 @@ struct SwiftPackageCoverageCommand: ParsableCommand {
             }
         }
 
-        print("totals:\n", totalsData)
-
         for section in totalSections {
             var percentage = 100.0 * totalsData[section][.covered].doubleValue / totalsData[section][.count].doubleValue
-            if percentage.isInfinite || percentage.isNaN {
+            if !percentage.isNormal {
                 percentage = 0.0
             }
-            print(totalsData[section])
             totalsData[section][.percent].doubleValue = percentage
-            print(totalsData[section])
         }
-
-        print("totals:\n", totalsData)
 
         var exportData: JSON = [:]
         exportData[.files] = filesData
@@ -172,8 +162,6 @@ struct SwiftPackageCoverageCommand: ParsableCommand {
 
     /// Write the coverage data to the appropriate places according to options.
     func output(coverage: JSON) {
-////        print(coverage)
-//        return
         let totals = coverage[.data].arrayValue[0][.totals]
         let section: JSON
 
@@ -190,20 +178,16 @@ struct SwiftPackageCoverageCommand: ParsableCommand {
             section = totals[.regions]
         }
 
-        if options.showLineCounts || options.showPercentage {
-            print("=== \(options.llvmTotalType.rawValue.uppercasedFirst()) Coverage ===")
-        }
-
         if options.showLineCounts {
             print("""
-            Lines Total:    \(section[.count].intValue)
-            Lines Covered:  \(section[.covered].intValue)
+               Covered: \(section[.covered].intValue)
+                 Total: \(section[.count].intValue)
             """)
         }
 
         if options.showPercentage {
             print("""
-            Percentage:     \(section[.percent].doubleValue)
+            Percentage: \(section[.percent].doubleValue)
             """)
         }
 
