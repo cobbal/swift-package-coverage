@@ -85,7 +85,7 @@ struct SwiftPackageCoverageCommand: ParsableCommand {
     ///
     /// This will remove files that aren't applicable and recalculate totals to create an updated version of the JSON.
     func processCoverageFile(atPath path: String) -> JSON {
-        var coverage: JSON
+        let coverage: JSON
         do {
             let json = try Data(contentsOf: URL(fileURLWithPath: path))
             coverage = try .init(data: json)
@@ -94,26 +94,29 @@ struct SwiftPackageCoverageCommand: ParsableCommand {
         }
 
         // See Documentation/llvm-cov-2.0.1.md for details on this spec.
+        var processedCoverage = JSON(parseJSON: "{}")
+        processedCoverage[.type] = coverage[.type]
+        processedCoverage[.version] = coverage[.version]
 
-        return coverage
+        return processedCoverage
     }
 
     /// Write the coverage data to the appropriate places according to options.
     func output(coverage: JSON) {
-        let totals = coverage[\.data].arrayValue[0][\.totals]
+        let totals = coverage[.data].arrayValue[0][.totals]
         let section: JSON
 
         switch options.llvmTotalType {
         case .branches:
-            section = totals[\.branches]
+            section = totals[.branches]
         case .functions:
-            section = totals[\.functions]
+            section = totals[.functions]
         case .instantiations:
-            section = totals[\.instantiations]
+            section = totals[.instantiations]
         case .lines:
-            section = totals[\.lines]
+            section = totals[.lines]
         case .regions:
-            section = totals[\.regions]
+            section = totals[.regions]
         }
 
         if options.showLineCounts || options.showPercentage {
@@ -122,14 +125,14 @@ struct SwiftPackageCoverageCommand: ParsableCommand {
 
         if options.showLineCounts {
             print("""
-            Lines Total:    \(section[\.count].intValue)
-            Lines Covered:  \(section[\.covered].intValue)
+            Lines Total:    \(section[.count].intValue)
+            Lines Covered:  \(section[.covered].intValue)
             """)
         }
 
         if options.showPercentage {
             print("""
-            Percentage:     \(section[\.percent].doubleValue)
+            Percentage:     \(section[.percent].doubleValue)
             """)
         }
 
