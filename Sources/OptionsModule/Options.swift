@@ -31,6 +31,7 @@ public struct Options: ParsableArguments {
     public var runPath: String = "."
 
     #if DEBUG
+    // TODO: This should be exposed in release builds as well. What should it be named?
     @Flag(
         help: .hidden
     )
