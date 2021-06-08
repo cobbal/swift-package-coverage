@@ -13,9 +13,14 @@ import OptionsModule
 import ShellOut
 import SwiftyJSON
 
+// Temporary hack around GitHub action's not supporting macOS 11 which means they don't support Xcode 12.5 which adds support for @main in SwiftPM...
+#if swift(>=5.4)
 @main
-struct SwiftPackageCoverageCommand: ParsableCommand {
-    static let configuration: CommandConfiguration = .init(
+extension SwiftPackageCoverageCommand {}
+#endif
+
+public struct SwiftPackageCoverageCommand: ParsableCommand {
+    public static let configuration: CommandConfiguration = .init(
         commandName: "package-coverage",
         abstract: "Tests a Swift Package and gathers its code coverage.",
         version: "0.1.0" + {
@@ -33,8 +38,10 @@ struct SwiftPackageCoverageCommand: ParsableCommand {
 
     @OptionGroup
     var options: Options
+    
+    public init() {}
 
-    mutating func run() {
+    public mutating func run() {
         if options.cleanBefore {
             runCleanUp()
         }

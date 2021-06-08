@@ -1,0 +1,3 @@
+import PackageCoverage
+
+SwiftPackageCoverageCommand.main()
