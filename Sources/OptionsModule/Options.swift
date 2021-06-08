@@ -37,7 +37,10 @@ public struct Options: ParsableArguments {
     )
     public var skipRun = false
     #else
-    public let skipRun = false
+    public var skipRun: Bool {
+        get { false }
+        set {} //swiftlint:disable:this unused_setter_value
+    }
     #endif
 
     @Flag(

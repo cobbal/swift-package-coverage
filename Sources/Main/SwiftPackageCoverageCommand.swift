@@ -38,7 +38,7 @@ public struct SwiftPackageCoverageCommand: ParsableCommand {
 
     @OptionGroup
     var options: Options
-    
+
     public init() {}
 
     public mutating func run() {
