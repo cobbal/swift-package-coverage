@@ -1,0 +1,12 @@
+name: 'Swift Package Coverage'
+description: 'Tests and gathers coverage for a Swift package.'
+inputs:
+  custom-flags:
+    description: 'Custom flags to pass to swift package-coverage'
+    required: false
+    default: ''
+runs:
+  using: 'composite'
+  steps:
+    - run: ${{ github.action_path }}/action.zsh ${{ inputs.custom-flags }}
+      shell: zsh
