@@ -1,8 +1,7 @@
-EXECUTABLE=.build/release/package-coverage
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+EXECUTABLE=${SCRIPT_DIR}/.build/release/package-coverage
 
-cd ${SCRIPT_DIR}
+make -c ${SCRIPT_DIR} build-release
 
-make build-release
 ${EXECUTABLE} --version
 ${EXECUTABLE} $@
