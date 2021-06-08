@@ -18,7 +18,13 @@ struct SwiftPackageCoverageCommand: ParsableCommand {
     static let configuration: CommandConfiguration = .init(
         commandName: "package-coverage",
         abstract: "Tests a Swift Package and gathers its code coverage.",
-        version: "0.1.0"
+        version: "0.1.0" + {
+            #if DEBUG
+            return "-debug"
+            #else
+            return ""
+            #endif
+        }()
     )
 
     struct ExitError: Swift.Error, CustomStringConvertible {
