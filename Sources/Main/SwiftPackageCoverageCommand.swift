@@ -121,24 +121,18 @@ public struct SwiftPackageCoverageCommand: ParsableCommand {
         processedCoverage[.type] = coverage[.type]
         processedCoverage[.version] = coverage[.version]
 
-        func shouldInclude(fileName: String) -> Bool {
-            options.includedPaths.contains(where:) { includedPath in
-                fileName.contains(includedPath)
-            }
-        }
-
         let filesData = JSON(coverage[.data].array?[0][.files].arrayValue.filter { file in
-            guard let fileName = file[.filename].string else {
+            guard let filePath = file[.filename].string else {
                 Self.exit(withError: ExitError(description: "Unexpected JSON format. Unable to parse file data:\n\(file)"))
             }
-            return shouldInclude(fileName: fileName)
+            return shouldInclude(filePath: filePath)
         } ?? [])
 
         let functionsData = JSON(coverage[.data].array?[0][.functions].arrayValue.filter { function in
             guard let fileNames = function[.filenames].array?.compactMap(\.string) else {
                 Self.exit(withError: ExitError(description: "Unexpected JSON format. Unable to parse function data:\n\(function)"))
             }
-            for fileName in fileNames where shouldInclude(fileName: fileName) {
+            for filePath in fileNames where shouldInclude(filePath: filePath) {
                 return true
             }
             return false
@@ -183,6 +177,26 @@ public struct SwiftPackageCoverageCommand: ParsableCommand {
         exportData[.totals] = totalsData
         processedCoverage[.data] = [exportData]
         return processedCoverage
+    }
+
+    func shouldInclude(filePath: String) -> Bool {
+        var isInIncludePaths: Bool {
+            options.includedPaths.contains(where:) { includedPath in
+                filePath.contains(includedPath)
+            }
+        }
+
+        var isInExcludedPaths: Bool {
+            options.excludedPaths.contains(where:) { excludedPath in
+                filePath.contains(excludedPath)
+            }
+        }
+
+        var isInHiddenDirectory: Bool {
+            filePath.components(separatedBy: "/").contains(where:) { $0.first == "." && $0.count > 1 && $0 != ".." }
+        }
+
+        return isInIncludePaths && !isInExcludedPaths && (options.includeHiddenDirectories ? true : !isInHiddenDirectory)
     }
 
     /// Write the coverage data to the appropriate places according to options.

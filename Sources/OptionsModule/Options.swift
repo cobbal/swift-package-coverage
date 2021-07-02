@@ -24,6 +24,28 @@ public struct Options: ParsableArguments {
     ]
 
     @Option(
+        name: [.customLong("exclude-paths")],
+        parsing: .upToNextOption,
+        help: """
+        Allows you to customize which paths are excluded in the coverage details. \
+        If the coverage report contains one of these values in the file path then it will be excluded from the report. \
+        This takes presidence over --coverage-paths.
+        """
+    )
+    public var excludedPaths: [String] = [
+        ".build/",
+        ".git/",
+    ]
+
+    @Flag(
+        help: """
+        Determines if hidden directories should be searched or not when found in the --coverage-paths. \
+        By default they are ignored.
+        """
+    )
+    public var includeHiddenDirectories = false
+
+    @Option(
         help: """
         Set the path to change directories to before running commands.
         """
@@ -132,7 +154,7 @@ public struct Options: ParsableArguments {
     public var dryRun = false
 
     @Option(
-        name: [.customLong("llvm-cov-json-output")],
+        name: [.customLong("llvm-cov-json")],
         help: """
         An output path to write an llvm-cov JSON export file to that matches the output of this tool.
         """
