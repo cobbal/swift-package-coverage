@@ -7,10 +7,13 @@
 //
 
 import ArgumentParser
+import CLISpinner
 import Foundation
 import LLVMCovJSON
 import OptionsModule
+import Rainbow
 import ShellOut
+import SignalHandler
 import SwiftyJSON
 
 // Temporary hack around GitHub action's not supporting macOS 11 which means they don't support Xcode 12.5 which adds support for @main in SwiftPM...
@@ -31,89 +34,119 @@ public struct SwiftPackageCoverageCommand: ParsableCommand {
             #endif
         }()
     )
-
-    struct ExitError: Swift.Error, CustomStringConvertible {
-        let description: String
+    
+    enum CodingKeys: CodingKey {
+        case options
     }
 
     @OptionGroup
     var options: Options
 
+    /// The process being used for the current `shellOut` command being run if any.
+    var process: Process?
+
+    /// The spinner being used to show that progress is being made.
+    var spinner: Spinner = Spinner(pattern: .dots)
+
     public init() {}
+}
 
+// MARK: - Run
+extension SwiftPackageCoverageCommand {
     public mutating func run() {
-        if options.cleanBefore {
-            runCleanUp()
+        Signals.handle(.interrupt) { [self] _ in
+            exit()
         }
 
-        runSwiftTestWithCoverage()
+        hideCursor()
+        startSpinnerIfNeeded()
 
-        let coverageFilePath = findCoverageFilePath()
-        let coverage = processCoverageFile(atPath: coverageFilePath)
+        stepRunSwiftTestWithCoverage()
+        stepSuccess()
 
-        output(coverage: coverage)
+        let coverageFilePath = stepFindCoverageFilePath()
+        stepSuccess()
 
-        if options.cleanAfter {
-            runCleanUp()
-        }
+        let coverage = stepProcessCoverageFile(atPath: coverageFilePath)
+        stepSuccess()
+
+        stepOutputResults(coverage: coverage)
+
+        spinner.stopAndClear()
+        spinner.unhideCursor()
     }
+}
 
+// MARK: - Steps
+extension SwiftPackageCoverageCommand {
     /// Runs `swift test` and generates the coverage file.
-    func runSwiftTestWithCoverage() {
+    mutating func stepRunSwiftTestWithCoverage() {
         guard !options.skipRun else {
             return
         }
 
-        let arguments = options.arguments
+        let arguments = options.swiftArguments
         guard !options.dryRun else {
             print("swift test --enable-code-coverage", terminator: "")
             if !arguments.isEmpty {
                 print("", arguments.joined(separator: " "))
             }
-            Self.exit(withError: ExitCode.success)
+            exit(withError: ExitCode.success)
         }
+        advanceStep(to: "Running Tests")
+
         do {
+            let process = Process()
+            self.process = process
+            defer { self.process = nil }
             try shellOut(
                 to: "swift test",
                 arguments: ["--enable-code-coverage"] + arguments,
-                at: options.runPath
+                at: options.runPath,
+                process: process
             )
         } catch let error as ShellOutError {
             print(error.output)
             print(error.message)
-            Self.exit(withError: ExitError(description: "Unable to run swift tests and gather coverage."))
+            exit(withError: ExitError(description: "Unable to run swift tests and gather coverage."))
         } catch {
-            Self.exit(withError: ExitError(description: "Unknown Error. Unable to run swift tests and gather coverage. \(error)"))
+            exit(withError: ExitError(description: "Unknown Error. Unable to run swift tests and gather coverage. \(error)"))
         }
     }
-
+    
     /// Finds the coverage file that should be processed.
-    func findCoverageFilePath() -> String {
+    mutating func stepFindCoverageFilePath() -> String {
+        advanceStep(to: "Finding Coverage File")
         do {
+            let process = Process()
+            self.process = process
+            defer { self.process = nil }
             return try shellOut(
                 to: "swift test",
-                arguments: ["--show-codecov-path"],
-                at: options.runPath
+                arguments: ["--show-codecov-path"] + options.swiftArguments,
+                at: options.runPath,
+                process: process
             )
         } catch let error as ShellOutError {
             print(error.output)
             print(error.message)
-            Self.exit(withError: ExitError(description: "Unknown Error. Unable to find coverage file."))
+            exit(withError: ExitError(description: "Unknown Error. Unable to find coverage file."))
         } catch {
-            Self.exit(withError: ExitError(description: "Unknown Error. Unable to find coverage file. \(error)"))
+            exit(withError: ExitError(description: "Unknown Error. Unable to find coverage file. \(error)"))
         }
     }
 
     /// Open and process the coverage JSON file.
     ///
     /// This will remove files that aren't applicable and recalculate totals to create an updated version of the JSON.
-    func processCoverageFile(atPath path: String) -> JSON {
+    func stepProcessCoverageFile(atPath path: String) -> JSON {
+        advanceStep(to: "Processing Coverage File")
         let coverage: JSON
         do {
             let json = try Data(contentsOf: URL(fileURLWithPath: path))
             coverage = try .init(data: json)
         } catch {
-            Self.exit(withError: ExitError(description: "Unable to open coverage JSON file: \(path)."))
+            exit(withError: ExitError(description: "Unable to open coverage JSON file: \(path)."))
         }
 
         // See Documentation/llvm-cov-2.0.1.md for details on this spec.
@@ -123,14 +156,14 @@ public struct SwiftPackageCoverageCommand: ParsableCommand {
 
         let filesData = JSON(coverage[.data].array?[0][.files].arrayValue.filter { file in
             guard let filePath = file[.filename].string else {
-                Self.exit(withError: ExitError(description: "Unexpected JSON format. Unable to parse file data:\n\(file)"))
+                exit(withError: ExitError(description: "Unexpected JSON format. Unable to parse file data:\n\(file)"))
             }
             return shouldInclude(filePath: filePath)
         } ?? [])
 
         let functionsData = JSON(coverage[.data].array?[0][.functions].arrayValue.filter { function in
             guard let fileNames = function[.filenames].array?.compactMap(\.string) else {
-                Self.exit(withError: ExitError(description: "Unexpected JSON format. Unable to parse function data:\n\(function)"))
+                exit(withError: ExitError(description: "Unexpected JSON format. Unable to parse function data:\n\(function)"))
             }
             for filePath in fileNames where shouldInclude(filePath: filePath) {
                 return true
@@ -138,7 +171,7 @@ public struct SwiftPackageCoverageCommand: ParsableCommand {
             return false
         } ?? [])
 
-        let totalSections = [LLVMCovPath.branches, .functions, .instantiations, .lines, .regions]
+        let totalSections: [LLVMCovPath] = [.branches, .functions, .instantiations, .lines, .regions]
 
         var totalsData: JSON = [:]
         for section in totalSections {
@@ -179,6 +212,102 @@ public struct SwiftPackageCoverageCommand: ParsableCommand {
         return processedCoverage
     }
 
+    /// Write the coverage data to the appropriate places according to options.
+    func stepOutputResults(coverage: JSON) {
+        spinner.stopAndClear()
+
+        let totals = coverage[.data].arrayValue[0][.totals]
+        let section: JSON
+
+        switch options.llvmTotalType {
+        case .branches:
+            section = totals[.branches]
+        case .functions:
+            section = totals[.functions]
+        case .instantiations:
+            section = totals[.instantiations]
+        case .lines:
+            section = totals[.lines]
+        case .regions:
+            section = totals[.regions]
+        }
+        
+        // If progress is being shown then give it some space from the results
+        if options.progressMode != .noProgress && (options.showLineCounts || options.showPercentage) {
+            print()
+        }
+
+        if options.showLineCounts {
+            print("""
+               Covered: \(section[.covered].intValue)
+                 Total: \(section[.count].intValue)
+            """)
+        }
+
+        if options.showPercentage {
+            print("""
+            Percentage: \(String(format: "%0.4f", section[.percent].doubleValue))
+            """)
+        }
+
+        if let llvmCovJSONOutputPath = options.llvmCovJSONOutputPath {
+            do {
+                var data = try coverage.rawData(options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
+                data.append("\n".data(using: .utf8)!)
+                try data.write(to: URL(fileURLWithPath: llvmCovJSONOutputPath))
+            } catch {
+                exit(withError: ExitError(description: "Unable to write llvm-cov JSON file to: \(llvmCovJSONOutputPath)."))
+            }
+        }
+    }
+}
+
+// MARK: - Step Helpers
+extension SwiftPackageCoverageCommand {
+    /// Hides the cursor while running.
+    ///
+    /// This is needed because the spinner normally hides it but when running without the spinner running we still want to hide it.
+    func hideCursor() {
+        print("\u{001B}[?25l", terminator: "")
+    }
+    
+    /// If running in a mode that should start the spinner, start it.
+    func startSpinnerIfNeeded() {
+        guard options.progressMode == .fullProgress && spinner.isRunning == false else {
+            return
+        }
+        spinner.start()
+    }
+
+    /// A step has been successful, so mark it as so and setup for the next step.
+    func stepSuccess() {
+        switch options.progressMode {
+        case .noProgress:
+            return
+        case .progressSteps:
+            clearLine()
+            print("✔".green, spinner.text)
+        case .fullProgress:
+            spinner.succeed()
+            spinner.text = ""
+        }
+    }
+
+    func advanceStep(to text: String) {
+        switch options.progressMode {
+        case .noProgress:
+            return
+        case .progressSteps:
+            spinner.text = text
+            print(" ", text, terminator: "")
+            // No idea why a flush is needed here. But without it the previous print doesn't get written to the console.
+            fflush(stdout)
+        case .fullProgress:
+            spinner.text = text
+            startSpinnerIfNeeded()
+        }
+    }
+
     func shouldInclude(filePath: String) -> Bool {
         var isInIncludePaths: Bool {
             options.includedPaths.contains(where:) { includedPath in
@@ -198,58 +327,36 @@ public struct SwiftPackageCoverageCommand: ParsableCommand {
 
         return isInIncludePaths && !isInExcludedPaths && (options.includeHiddenDirectories ? true : !isInHiddenDirectory)
     }
-
-    /// Write the coverage data to the appropriate places according to options.
-    func output(coverage: JSON) {
-        let totals = coverage[.data].arrayValue[0][.totals]
-        let section: JSON
-
-        switch options.llvmTotalType {
-        case .branches:
-            section = totals[.branches]
-        case .functions:
-            section = totals[.functions]
-        case .instantiations:
-            section = totals[.instantiations]
-        case .lines:
-            section = totals[.lines]
-        case .regions:
-            section = totals[.regions]
-        }
-
-        if options.showLineCounts {
-            print("""
-               Covered: \(section[.covered].intValue)
-                 Total: \(section[.count].intValue)
-            """)
-        }
-
-        if options.showPercentage {
-            print("""
-            Percentage: \(section[.percent].doubleValue)
-            """)
-        }
-
-        if let llvmCovJSONOutputPath = options.llvmCovJSONOutputPath {
-            do {
-                var data = try coverage.rawData(options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
-                data.append("\n".data(using: .utf8)!)
-                try data.write(to: URL(fileURLWithPath: llvmCovJSONOutputPath))
-            } catch {
-                Self.exit(withError: ExitError(description: "Unable to write llvm-cov JSON file to: \(llvmCovJSONOutputPath)."))
-            }
-        }
+    
+    struct ExitError: Swift.Error, CustomStringConvertible {
+        let description: String
+    }
+    
+    func clearLine() {
+        print("\r", terminator: "")
+        fflush(stdout)
     }
 
-    /// Deletes .build at the target path
-    func runCleanUp() {
-        do {
-            try shellOut(
-                to: "rm",
-                arguments: ["-rf", ".build"],
-                at: options.runPath)
-        } catch {
-            Self.exit(withError: ExitError(description: "Unable to clean up after processing coverage. \(error)"))
+    /// The same as Self.exit(withError:) but it stops the running process and/or cleans up the consoles progress state.
+    func exit(withError error: Error? = nil) -> Never {
+        if let process = process,
+           process.isRunning {
+            process.interrupt()
+            process.terminate()
         }
+        
+        switch options.progressMode {
+        case .noProgress:
+            break
+        case .progressSteps:
+            clearLine()
+            print("✖".red, spinner.text)
+        case .fullProgress:
+            spinner.fail()
+        }
+
+        spinner.unhideCursor()
+        print()
+        Self.exit(withError: error)
     }
 }

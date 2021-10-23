@@ -52,81 +52,39 @@ public struct Options: ParsableArguments {
     )
     public var runPath: String = "."
 
-    #if DEBUG
-    // TODO: This should be exposed in release builds as well. What should it be named?
     @Flag(
-        help: .hidden
+        help: """
+        Process the exisiting coverage file without running tests. \
+        If no coverage file exists then exit with an error.
+        """
     )
     public var skipRun = false
-    #else
-    public var skipRun: Bool {
-        get { false }
-        set {} //swiftlint:disable:this unused_setter_value
-    }
-    #endif
 
     @Flag(
         help: """
-        When set this will cause the `.build` directory to be deleted before gathering code coverage.
+        When set the command that will be run to generate the code coverage report from SwiftPM will be printed to the console. \
+        Then executaion will terminate without actually running it. \
+        No other input or options will be considered beyond determining what would have been run.
         """
     )
-    public var cleanBefore = false
-
-    @Flag(
-        help: """
-        When set this will cause the `.build` directory to be deleted after gathering code coverage.
-        """
-    )
-    public var cleanAfter = false
-
-    @Option(
-        parsing: .upToNextOption,
-        help: """
-        Flags to pass to the swift compiler. \
-        If you have an argument that contains spaces in it put it inside of quotes. \
-        -Xswiftc will automatically be prepended to each input for you.
-        """
-    )
-    public var swiftBuildFlags: [String] = []
-
-    @Option(
-        parsing: .upToNextOption,
-        help: """
-        Flags to pass to the C compiler. \
-        If you have an argument that contains spaces in it put it inside of quotes. \
-        -Xcc will automatically be prepended to each input for you.
-        """
-    )
-    public var cBuildFlags: [String] = []
-
-    @Option(
-        parsing: .upToNextOption,
-        help: """
-        Flags to pass to the C++ compiler. \
-        If you have an argument that contains spaces in it put it inside of quotes. \
-        -Xcxx will automatically be prepended to each input for you.
-        """
-    )
-    public var cxxBuildFlags: [String] = []
-
-    @Option(
-        parsing: .upToNextOption,
-        help: """
-        Flags to pass to the linker. \
-        If you have an argument that contains spaces in it put it inside of quotes. \
-        -Xlinker will automatically be prepended to each input for you.
-        """
-    )
-    public var linkerFlags: [String] = []
+    public var dryRun = false
 
     @Option(
         parsing: .upToNextOption,
         help: """
         Flags to pass to swift test. \
-        These flags will be passed first after the base swift test command without any modification.
+        These flags will be passed first after the base swift test command without any modification. \
+        Use this to customize other swift build/test flags as needed.
         """
     )
-    public var otherFlags: [String] = []
+    public var swiftFlags: [String] = []
+    
+    @Flag(
+        help: """
+        What kind of progress to show while gathering coverage.
+        """
+    )
+    public var progressMode: ProgressMode = .fullProgress
 
     @Flag(
         inversion: .prefixedNo,
@@ -143,15 +101,6 @@ public struct Options: ParsableArguments {
         """
     )
     public var showPercentage = true
-
-    @Flag(
-        help: """
-        When set the command that will be run to generate the code coverage report from SwiftPM will be printed to the console. \
-        Then executaion will terminate without actually running it. \
-        No other input or options will be considered beyond determining what would have been run.
-        """
-    )
-    public var dryRun = false
 
     @Option(
         name: [.customLong("llvm-cov-json")],
@@ -192,22 +141,8 @@ extension Sequence {
 }
 
 extension Options {
-    public var arguments: [String] {
-        var arguments: [String] = []
-        arguments.reserveCapacity(otherFlags.count + 2 * (swiftBuildFlags.count + cBuildFlags.count + cxxBuildFlags.count + linkerFlags.count))
-        arguments.append(contentsOf: otherFlags)
-        arguments.append(
-            contentsOf: swiftBuildFlags.beforeEachValue(insert: "-Xswiftc")
-        )
-        arguments.append(
-            contentsOf: cBuildFlags.beforeEachValue(insert: "-Xcc")
-        )
-        arguments.append(
-            contentsOf: cxxBuildFlags.beforeEachValue(insert: "-Xcxx")
-        )
-        arguments.append(
-            contentsOf: linkerFlags.beforeEachValue(insert: "-Xlinker")
-        )
-        return arguments
+    /// All options processed and turned into the arguments to pass to the `swift` commands.
+    public var swiftArguments: [String] {
+        swiftFlags
     }
 }

@@ -1,12 +1,17 @@
 name: 'Swift Package Coverage'
 description: 'Tests and gathers coverage for a Swift package.'
 inputs:
-  custom-flags:
-    description: 'Custom flags to pass to swift package-coverage'
+  custom-build-flags:
+    description: 'Custom build flags to pass to swift package-coverage'
     required: false
     default: ''
+outputs:
+  coverage:
+    description: "The coverage of the package"
+    value: ${{ steps.gather-coverage.outputs.coverage}}
 runs:
   using: 'composite'
   steps:
-    - run: ${{ github.action_path }}/action.sh ${{ inputs.custom-flags }}
+    - id: gather-coverage
+      run: echo "::set-output name=coverage::$(${{ github.action_path }}/action.sh ${{ inputs.custom-flags }})"
       shell: bash
