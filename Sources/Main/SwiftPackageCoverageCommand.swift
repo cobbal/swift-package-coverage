@@ -139,6 +139,9 @@ extension SwiftPackageCoverageCommand {
     /// Open and process the coverage JSON file.
     ///
     /// This will remove files that aren't applicable and recalculate totals to create an updated version of the JSON.
+    ///
+    /// - Parameter path: The path to the original LLVM Coverage JSON file to process and clean up.
+    /// - Returns: Processed LLVM Coverage JSON
     func stepProcessCoverageFile(atPath path: String) -> JSON {
         advanceStep(to: "Processing Coverage File")
         let coverage: JSON
@@ -213,6 +216,8 @@ extension SwiftPackageCoverageCommand {
     }
 
     /// Write the coverage data to the appropriate places according to options.
+    ///
+    /// - Parameter coverage: The LLVM Coverage JSON file contents to output.
     func stepOutputResults(coverage: JSON) {
         spinner.stopAndClear()
 
@@ -293,6 +298,9 @@ extension SwiftPackageCoverageCommand {
         }
     }
 
+    /// Sets the spinner to a specific set of text and starts it up if needed.
+    ///
+    /// - Parameter text: The text to set the spinner to.
     func advanceStep(to text: String) {
         switch options.progressMode {
         case .noProgress:
@@ -307,7 +315,11 @@ extension SwiftPackageCoverageCommand {
             startSpinnerIfNeeded()
         }
     }
-
+    
+    /// Determines if a file path should be included in the coverage report.
+    ///
+    /// - Parameter filePath: The file path to validate as being part of the coverage report.
+    /// - Returns: If `filePath` should be part of the coverage report.
     func shouldInclude(filePath: String) -> Bool {
         var isInIncludePaths: Bool {
             options.includedPaths.contains(where:) { includedPath in
@@ -328,16 +340,22 @@ extension SwiftPackageCoverageCommand {
         return isInIncludePaths && !isInExcludedPaths && (options.includeHiddenDirectories ? true : !isInHiddenDirectory)
     }
     
+    /// The error type used to exit the application when something goes wrong.
     struct ExitError: Swift.Error, CustomStringConvertible {
         let description: String
     }
     
+    /// Clears the current terminal line.
+    ///
+    /// This is used mainly when options.progressMode is .progressSteps
     func clearLine() {
         print("\r", terminator: "")
         fflush(stdout)
     }
 
     /// The same as Self.exit(withError:) but it stops the running process and/or cleans up the consoles progress state.
+    ///
+    /// - Parameter error: The error to use when exiting, if any.
     func exit(withError error: Error? = nil) -> Never {
         if let process = process,
            process.isRunning {

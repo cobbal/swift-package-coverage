@@ -12,7 +12,7 @@ By default this will create output like this finding coverage of typical source 
 ```
    Covered: 1451
      Total: 1936
-Percentage: 74.94834710743801
+Percentage: 74.9483
 ```
 
 Where the Covered and Total are the number of lines found in the package.
