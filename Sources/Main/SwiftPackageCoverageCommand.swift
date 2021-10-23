@@ -26,7 +26,7 @@ public struct SwiftPackageCoverageCommand: ParsableCommand {
     public static let configuration: CommandConfiguration = .init(
         commandName: "package-coverage",
         abstract: "Tests a Swift Package and gathers its code coverage.",
-        version: "0.1.0" + {
+        version: "0.2.1" + {
             #if DEBUG
             return "-debug"
             #else
@@ -34,7 +34,7 @@ public struct SwiftPackageCoverageCommand: ParsableCommand {
             #endif
         }()
     )
-    
+
     enum CodingKeys: CodingKey {
         case options
     }
@@ -46,7 +46,7 @@ public struct SwiftPackageCoverageCommand: ParsableCommand {
     var process: Process?
 
     /// The spinner being used to show that progress is being made.
-    var spinner: Spinner = Spinner(pattern: .dots)
+    var spinner = Spinner(pattern: .dots)
 
     public init() {}
 }
@@ -113,7 +113,7 @@ extension SwiftPackageCoverageCommand {
             exit(withError: ExitError(description: "Unknown Error. Unable to run swift tests and gather coverage. \(error)"))
         }
     }
-    
+
     /// Finds the coverage file that should be processed.
     mutating func stepFindCoverageFilePath() -> String {
         advanceStep(to: "Finding Coverage File")
@@ -236,7 +236,7 @@ extension SwiftPackageCoverageCommand {
         case .regions:
             section = totals[.regions]
         }
-        
+
         // If progress is being shown then give it some space from the results
         if options.progressMode != .noProgress && (options.showLineCounts || options.showPercentage) {
             print()
@@ -275,7 +275,7 @@ extension SwiftPackageCoverageCommand {
     func hideCursor() {
         print("\u{001B}[?25l", terminator: "")
     }
-    
+
     /// If running in a mode that should start the spinner, start it.
     func startSpinnerIfNeeded() {
         guard options.progressMode == .fullProgress && spinner.isRunning == false else {
@@ -315,7 +315,7 @@ extension SwiftPackageCoverageCommand {
             startSpinnerIfNeeded()
         }
     }
-    
+
     /// Determines if a file path should be included in the coverage report.
     ///
     /// - Parameter filePath: The file path to validate as being part of the coverage report.
@@ -339,12 +339,12 @@ extension SwiftPackageCoverageCommand {
 
         return isInIncludePaths && !isInExcludedPaths && (options.includeHiddenDirectories ? true : !isInHiddenDirectory)
     }
-    
+
     /// The error type used to exit the application when something goes wrong.
     struct ExitError: Swift.Error, CustomStringConvertible {
         let description: String
     }
-    
+
     /// Clears the current terminal line.
     ///
     /// This is used mainly when options.progressMode is .progressSteps
@@ -362,7 +362,7 @@ extension SwiftPackageCoverageCommand {
             process.interrupt()
             process.terminate()
         }
-        
+
         switch options.progressMode {
         case .noProgress:
             break

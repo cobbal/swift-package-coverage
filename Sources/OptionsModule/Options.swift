@@ -78,10 +78,11 @@ public struct Options: ParsableArguments {
         """
     )
     public var swiftFlags: [String] = []
-    
+
     @Flag(
         help: """
         What kind of progress to show while gathering coverage.
+        \(ProgressMode.allCases.map(\.help).map { "  \($0)" }.joined(separator: "\n"))
         """
     )
     public var progressMode: ProgressMode = .fullProgress
