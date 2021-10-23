@@ -29,6 +29,15 @@
         }
       },
       {
+        "package": "SignalHandler",
+        "repositoryURL": "https://github.com/bscothern/SignalHandler",
+        "state": {
+          "branch": "main",
+          "revision": "2b937fff2e4935a37a0522bc69fdfc9e56c89d42",
+          "version": null
+        }
+      },
+      {
         "package": "swift-argument-parser",
         "repositoryURL": "https://github.com/apple/swift-argument-parser",
         "state": {
