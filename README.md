@@ -22,11 +22,6 @@ swift package-coverage --help
 ```
 
 ## Installation
-Brew:
-```zsh
-echo "TODO"
-```
-
 Manual:
 ```zsh
 git clone https://github.com/bscothern/swift-package-coverage
