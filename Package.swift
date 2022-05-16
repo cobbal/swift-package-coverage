@@ -6,6 +6,9 @@ let package = Package(
     platforms: [
         .macOS(.v10_15),
     ],
+    products: [
+        .executable(name: "package-coverage", targets: ["package-coverage"]),
+    ],
     dependencies: [
         .package(url: "https://github.com/bscothern/SignalHandler", .branch("main")),
         .package(url: "https://github.com/apple/swift-argument-parser", .upToNextMinor(from: "0.4.0")),
